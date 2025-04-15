@@ -61,3 +61,23 @@ The assembler supports the following 46 instruction set:
 
     After compiling, run:
     $ ./assembler test.asm test.o log.txt
+
+## Modified Assembler
+The following modifications were made to this MIPS assembler. This assembler now supports the generation of mahcine code for the data section of the compiler generated assembly.
+
+To build the assembler, you'll have to run the following commands from within the MipsAssembler directory:
+``` bash
+mkdir -p build
+cd build
+cmake ..
+make
+cd ..
+```
+
+This will create the MipsAssembler executable. To generate the machine code for a sample assembly program, run the following command from within the MipsAssembler directory:
+```bash
+./build/MipsAssembler input.s/factorial.s output/factorial.out logs/factorial.log
+```
+
+`factorial.out` contains the machine code for only the text section with the addresses. `factorial.out.no_address.data.bin` and `factorial.out.no_address.text.bin` contains the machine code for the data section and the text section respectively without the addresses.
+
