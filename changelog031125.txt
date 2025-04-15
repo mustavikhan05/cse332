@@ -1,0 +1,496 @@
+[1mdiff --git a/../MipsAssembler.original/finalassembler.cpp b/finalassembler.cpp[m
+[1mindex 6d33356..3bd0b71 100644[m
+[1m--- a/../MipsAssembler.original/finalassembler.cpp[m
+[1m+++ b/finalassembler.cpp[m
+[36m@@ -16,6 +16,12 @@[m
+ [m
+ using namespace std;[m
+ [m
+[32m+[m[32m#define cout cout<<__FILE__<<":"<<__LINE__<<": "[m
+[32m+[m
+[32m+[m[32m// Using global variables is a horrible ides[m
+[32m+[m[32m// Do as I say, not as I do[m
+[32m+[m[32munordered_map<string, int> label_address; // variable to store the address of label[m
+[32m+[m
+ int pc = 0;//program_counter >> 2[m
+ [m
+ // set of all valid labels in input file[m
+[36m@@ -36,8 +42,13 @@[m [mint section[2] = {-1,-1};[m
+ int address = 0;[m
+ [m
+ // this function determines the type of the valid line in the input file as invalid, instruction, .data, .text, labels[m
+[31m-int string_type(string s)[m
+[32m+[m[32mint string_type(string s, int* previous_string_type)[m
+ {[m
+[32m+[m[32m    cout << "working with line: " << s << endl;[m
+[32m+[m[32m    cout << "section[0]: " << section[0] << endl;[m
+[32m+[m[32m    cout << "section[1]: " << section[1] << endl;[m
+[32m+[m[32m    cout << "pc: " << pc << endl;[m
+[32m+[m
+ 	int i = 0;[m
+ 	string s1 = "";[m
+ 	while(s[i] != ' ')[m
+[36m@@ -46,46 +57,79 @@[m [mint string_type(string s)[m
+ 		i++;[m
+ 	}[m
+ [m
+[32m+[m[32m    cout << s1 << endl;[m
+[32m+[m
+ 	if(s1 == ".data")[m
+ 	{[m
+[31m-		if(i == s.size()-1)[m
+[31m-			return 3;[m
+[31m-		else return 0;[m
+[32m+[m		[32mif(i == s.size()-1) {[m
+[32m+[m[32m            *previous_string_type = 3;[m
+[32m+[m[32m            return 3;[m
+[32m+[m[32m        }[m
+[32m+[m		[32melse { return 0; }[m
+ 	}[m
+ [m
+ 	if(s1 == ".text")[m
+ 	{[m
+[31m-		if(i == s.size()-1)[m
+[31m-			return 4;[m
+[32m+[m		[32mif(i == s.size()-1) {[m
+[32m+[m[32m            *previous_string_type = 4;[m
+[32m+[m[32m            return 4;[m
+[32m+[m[32m        }[m
+ 		else return 0;[m
+ 	}[m
+ [m
+[32m+[m[32m    // check if I received an instruction[m
+ 	if(instruction.count(s1)>0)[m
+ 	{[m
+ 		return 2;[m
+ 	}[m
+ [m
+ 	int idx = s1.size()-1;[m
+[31m-	if(s1.size()>1 && ((s1[0]>=65 && s1[0] <=90) || (s1[0]>=97 && s1[0] <=122)) && s1[idx] == ':')[m
+[32m+[m[32m    cout << endl;[m
+[32m+[m[32m    // the following variable is set to true if the current line that is being processed is of the following format:[m
+[32m+[m[32m    //  <string>:[m
+[32m+[m[32m    // i.e., it is a string followed by `:`[m
+[32m+[m[32m    // Checking for ascii code 95 allows labels to start with a preceding underscore: `_`[m
+[32m+[m[32m    const[m
+[32m+[m[32m    bool is_label_like = ((s1[0]>=65 && s1[0] <=90) || (s1[0]>=97 && s1[0] <=122) || s[0] == 95) && s1[idx] == ':';[m
+[32m+[m	[32mif(s1.size()>1 && is_label_like)[m
+ 	{[m
+ 		string s2 = "";[m
+ 		s2 = s1;[m
+ 		s2.pop_back();[m
+[31m-		if(instruction.count(s2)>0)[m
+[32m+[m		[32mif(instruction.count(s2)>0) // make sure the instruction is supported by the assembler[m
+ 		{[m
+[32m+[m[32m            cout << endl;[m
+ 			return 0;[m
+ 		}[m
+[31m-		else return 1;[m
+[32m+[m		[32melse {[m
+[32m+[m
+[32m+[m[32m            cout << endl;[m
+[32m+[m[32m            return 1;[m
+[32m+[m[32m        }[m
+ 	}[m
+ [m
+[32m+[m[32m    cout << "s1[0]: |" << s1[0] << "|" << endl;[m
+[32m+[m[32m    if (s1[0] == 46) { // encountered period[m
+[32m+[m[32m        // I am assuming that the following is invalid in the text section[m
+[32m+[m[32m        // label:[m
+[32m+[m[32m        //  ,word 42[m
+[32m+[m[32m        if (*previous_string_type == 3) {[m
+[32m+[m[32m            cout << "need to add something here" << endl;[m
+[32m+[m[32m            return 1;[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m
+ 	if(i+1 < s.size() && ((s1[0]>=65 && s1[0] <=90) || (s1[0]>=97 && s1[0] <=122)))[m
+ 	{[m
+[31m-		if(s[i+1] == ':' && s[i+2] == ' ')[m
+[32m+[m[32m        cout << endl;[m
+[32m+[m		[32mif(s[i+1] == ':' && s[i+2] == ' ') {[m
+[32m+[m[32m            cout << endl;[m
+ 			return 1;[m
+[32m+[m[32m        }[m
+ 	}[m
+ [m
+[32m+[m[32m    cout << endl;[m
+ 	return 0;[m
+[31m-[m
+ }[m
+ [m
+ //for processing instruction type1 syscall and nop[m
+[36m@@ -147,6 +191,12 @@[m [mvoid type2(string opname, string operand, int operand_count, int line_count, int[m
+ [m
+ 		if(!(registers.count(r1)>0 && registers.count(r2)>0 && registers.count(r3)>0))[m
+ 		{[m
+[32m+[m[32m            cout << "r1: " << r1 << endl;[m
+[32m+[m[32m            cout << "r2: " << r2 << endl;[m
+[32m+[m[32m            cout << "r3: " << r3 << endl;[m
+[32m+[m[32m            cout << "registers.count("<<r1<<"): "<< registers.count(r1) << endl;[m
+[32m+[m[32m            cout << "registers.count("<<r2<<"): "<< registers.count(r2) << endl;[m
+[32m+[m[32m            cout << "registers.count("<<r3<<"): "<< registers.count(r3) << endl;[m
+ 			*valid = 0;[m
+ 			cout<<"syntax error at line "<<line_count<<endl;[m
+ 			if(write == 1)[m
+[36m@@ -529,6 +579,7 @@[m [mvoid type4(string opname, string operand, int operand_count, int line_count, int[m
+ //for processing instruction type2 : op r1, (off)r2[m
+ void type5(string opname, string operand, int operand_count, int line_count, int* valid, ofstream &file, ofstream &log, int write)[m
+ {[m
+[32m+[m[32m    cout << "operand: " << operand << endl;[m
+ 	if(operand_count == 2)[m
+ 	{[m
+ 		int i = 0;[m
+[36m@@ -573,6 +624,7 @@[m [mvoid type5(string opname, string operand, int operand_count, int line_count, int[m
+ 	    		off += str[l];[m
+ 	    		l++;[m
+ 	    	}[m
+[32m+[m[32m            cout << "offset: " << off << endl;[m
+ [m
+ 	    	int m = l+1;[m
+ 	    	while(str[m] != ' ')[m
+[36m@@ -586,7 +638,8 @@[m [mvoid type5(string opname, string operand, int operand_count, int line_count, int[m
+ 	    	int int_flag = 1;[m
+ 			for(int id=0; id<off.length(); id++)[m
+ 	        {[m
+[31m-	        	if(!(off[id]>='0' && off[id]<='9'))[m
+[32m+[m[32m                // the following prevented the assembler from accepting -ve offsets[m
+[32m+[m	[41m        [m	[32mif(!(off[id]>='0' && off[id]<='9') && off[id] != 45)[m
+ 				{[m
+ 					int_flag = 0;[m
+ 				}[m
+[36m@@ -594,6 +647,11 @@[m [mvoid type5(string opname, string operand, int operand_count, int line_count, int[m
+ [m
+ 	        if(!(registers.count(r1)>0 && registers.count(r2)>0 && int_flag==1))[m
+ 	        {[m
+[32m+[m[32m                cout << "int_flag: " << int_flag << endl;[m
+[32m+[m[32m                cout << "r1: " << r1 << endl;[m
+[32m+[m[32m                cout << "r2: " << r2 << endl;[m
+[32m+[m[32m                cout << "registers.count("<<r1<<"): " << registers.count(r1) << endl;[m
+[32m+[m[32m                cout << "registers.count("<<r2<<"): " << registers.count(r2) << endl;[m
+ 		        *valid = 0;[m
+ 				cout<<"syntax error at line "<<line_count<<endl;[m
+ 				if(write == 1)[m
+[36m@@ -616,12 +674,17 @@[m [mvoid type5(string opname, string operand, int operand_count, int line_count, int[m
+ [m
+ 			int off_int = stoi(off);[m
+ 			string off_bin = decToBinary(off_int);[m
+[32m+[m[32m            cout << "off_int: " << off_int << endl;[m
+ [m
+ 			string op, rs, rt, h;[m
+ 			op = type5_op[opname];[m
+ 			rs = reg_op[r2];[m
+ 			rt = reg_op[r1];[m
+ [m
+[32m+[m[32m            // Since I added support for 2's complement, I need to find a way to discard upper 16 bits[m
+[32m+[m[32m            cout << "before truncation, off_bin: " << off_bin << endl;[m
+[32m+[m[32m            off_bin = off_bin.substr(std::min(off_bin.size(), static_cast<size_t>(16)));[m
+[32m+[m[32m            cout << "off_bin: " << off_bin << endl;[m
+ 			if(off_bin.size()>16)[m
+ 			{[m
+ 				*valid = 0;[m
+[36m@@ -943,6 +1006,7 @@[m [mvoid type6(string opname, string operand, int operand_count, int line_count, int[m
+ //for processing instruction type2 : op r1, label[m
+ void type7(string opname, string operand, int operand_count, int line_count, int* valid, ofstream &file, ofstream &log, int write)[m
+ {[m
+[32m+[m[32m    cout << "processing line " << line_count << endl;[m
+ 	if(operand_count == 2)[m
+ 	{[m
+ 		int i = 0;[m
+[36m@@ -966,7 +1030,8 @@[m [mvoid type7(string opname, string operand, int operand_count, int line_count, int[m
+ 			if(registers.count(r1)>0 && datalabels.count(lab)==0)[m
+ 			{[m
+ 				*valid = 0;[m
+[31m-				cout<<"syntax error at line "<<line_count<<": no label exists with this name"<<endl;[m
+[32m+[m				[32mcout<<"syntax error at line "<<line_count[m
+[32m+[m[32m                <<": no label exists with this name: " << lab << endl;[m
+ 				if(write == 1)[m
+ 					log<<"syntax error at line "<<line_count<<": no label exists with this name"<<endl;[m
+ 				return;[m
+[36m@@ -978,6 +1043,8 @@[m [mvoid type7(string opname, string operand, int operand_count, int line_count, int[m
+ 				pc++;[m
+ 				file<<"0011 1100 0000 0001 0001 0000 0000 0001"<<endl;[m
+ [m
+[32m+[m[32m                cout << "looking for label \"" << lab << "\" in DATALABEL" << endl;[m
+[32m+[m
+ 				int x = DATALABEL[lab];[m
+ 				string h;[m
+ 				string op = "001101";[m
+[36m@@ -1470,6 +1537,8 @@[m [mvoid instruction_process(string s, int line_count, int* valid, ofstream &file, o[m
+ //stores the address of labels of data section if valid[m
+ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofstream &log, int write)[m
+ {[m
+[32m+[m[32m    cout << "entered function: datalabel_process" << endl;[m
+[32m+[m[32m    cout << "Received String: " << s << endl;[m
+ 	//checks that labels of data section must come under .data and not under .text[m
+ 	if(!(section[0] != -1 && !(section[0] < section[1] && section[1] < pc_counter )))[m
+ 	{[m
+[36m@@ -1487,9 +1556,12 @@[m [mvoid datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs[m
+ 		s1 += s[i];[m
+ 		i++;[m
+ 	}[m
+[32m+[m[32m    cout << "s1 = " << s1 << "|" << endl;[m
+[32m+[m[32m    cout << "i: " << i << endl;[m
+ [m
+ 	int idx = s1.size()-1;[m
+[31m-	if(s1[idx] == ':')[m
+[32m+[m[32m    const bool is_label = (s1[idx] == ':');[m
+[32m+[m	[32mif(is_label)[m
+ 	{[m
+ 		string s2;[m
+ 		s2 = s1;[m
+[36m@@ -1674,17 +1746,20 @@[m [mvoid datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs[m
+ 	}[m
+ 	else[m
+ 	{[m
+[31m-		int j = i+3;[m
+[32m+[m		[32mint j = i+1;[m
+[32m+[m[32m        cout << "j: " << j << endl;[m
+ 		string s3 = "";[m
+ [m
+ 		//data_type[m
+ 		int data = 0;[m
+ 		while(s[j] != ' ')[m
+ 		{[m
+[31m-			s3 += s[j];[m
+[31m-			j++;[m
+[32m+[m			[32ms3 += s[j++];[m
+ 		}[m
+ [m
+[32m+[m[32m        s3 = s1;[m
+[32m+[m
+[32m+[m[32m        cout << "s3 = |" << s3 << "|" << endl;[m
+ 		if(s3 == ".space")[m
+ 		{[m
+ 			data = 1;[m
+[36m@@ -1705,15 +1780,14 @@[m [mvoid datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs[m
+ 			}[m
+ 			else[m
+ 			{[m
+[31m-				*valid = 0;[m
+[31m-				cout<<"syntax error at line "<<line_count<<" : wrong data type"<<endl;[m
+[31m-				if(write == 1)[m
+[31m-					log<<"syntax error at line "<<line_count<<" : wrong data type"<<endl;[m
+[31m-				return;[m
+[32m+[m[32m                if (label_address.find(s3) == label_address.end()) {[m
+[32m+[m[32m                    label_address[s3] = pc;[m
+[32m+[m[32m                }[m
+ 			}[m
+ 		}[m
+[32m+[m[32m        cout << "data: " << data << endl;[m
+ [m
+[31m-		int k = j+1;[m
+[32m+[m		[32mint k = i+1;[m
+ 		if(k >= s.size())[m
+ 		{[m
+ 			*valid = 0;[m
+[36m@@ -1731,13 +1805,16 @@[m [mvoid datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs[m
+ 			k++;[m
+ 		}[m
+ [m
+[31m-		int k1 = j+1;[m
+[32m+[m		[32mint k1 = i+1;[m
+ 		while(k1 < s.size()-1)[m
+ 		{[m
+ 			s5 += s[k1];[m
+ 			k1++;[m
+ 		}[m
+ [m
+[32m+[m[32m        cout << "s4 = |" << s4 << "|" << endl;[m
+[32m+[m[32m        cout << "s5 = |" << s5 << "|" << endl;[m
+[32m+[m
+ 		if(data == 1)//.space[m
+ 		{[m
+ 			if(k == s.size()-1)[m
+[36m@@ -1827,26 +1904,38 @@[m [mvoid datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs[m
+ 		    strcpy(y, s5.c_str());[m
+ [m
+ 		    char *token1 = strtok(y, " ,");[m
+[32m+[m[32m            cout << "token1: " << token1 << endl;[m
+ [m
+[32m+[m[32m            bool ints, chars;[m
+[32m+[m[32m            ints = chars = false;[m
+ 		    while (token1 != NULL)[m
+ 			{[m
+ 		        for(int id=0; id<strlen(token1); id++)[m
+ 		        {[m
+[31m-		        	if(!(token1[id]>='0' && token1[id]<='9'))[m
+[31m-					{[m
+[31m-						*valid = 0;[m
+[31m-						cout<<"syntax error at line "<<line_count<<": word values are not integer"<<endl;[m
+[31m-						if(write == 1)[m
+[31m-							log<<"syntax error at line "<<line_count<<": word values are not integer"<<endl;[m
+[31m-						return;[m
+[31m-					}[m
+[32m+[m[32m                    if (token1[id] > 47 && token1[id] < 58) ints = true;[m
+[32m+[m[32m                    else chars = true;[m
+ 		        }[m
+ 		        token_count++;[m
+[32m+[m[32m                if (ints && chars && token_count > 1 || chars && token_count > 1)[m
+[32m+[m[32m                {[m
+[32m+[m[32m                    *valid = 0;[m
+[32m+[m[32m                    cout<<"syntax error at line "<<line_count[m
+[32m+[m[32m                    <<": word values cannot be multiple labels or a mixture of labels and ints"<<endl;[m
+[32m+[m[32m                    if(write == 1)[m
+[32m+[m[32m                        log<<"syntax error at line "<<line_count[m
+[32m+[m[32m                        <<": word values cannot be multiple labels or a mixture of labels and ints"<<endl;[m
+[32m+[m[32m                    return;[m
+[32m+[m[32m                }[m
+ 		        token1 = strtok(NULL, " ,");[m
+ 		    }[m
+[32m+[m[32m            bool alphanum = (chars && ints) || chars;[m
+[32m+[m[32m            if (alphanum) cout << "token is alphanumeric" << endl;[m
+[32m+[m[32m            else cout << "token is numeric only" << endl;[m
+ 			int space = token_count*4;[m
+[31m-			datalabels.insert(s1);[m
+[31m-			DATALABEL.insert(pair<string, int>(s1, address));[m
+[32m+[m[32m            string s_alpha = "#" + s5;[m
+[32m+[m[32m            cout << "inserting \"" << s_alpha << "\" into datalabels" << endl;[m
+[32m+[m			[32mdatalabels.insert(s_alpha);[m
+[32m+[m			[32mDATALABEL.insert(pair<string, int>(s_alpha, address));[m
+ 			address += space;[m
+ 		}[m
+ 	}[m
+[36m@@ -1855,6 +1944,8 @@[m [mvoid datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs[m
+ //sends valid lines of different types for procsessing into respective functions for their processing[m
+ void process(string s, int type, int line_count, int pc_counter, int* valid, ofstream &file, int pass, ofstream &log, int write)[m
+ {[m
+[32m+[m[32m    cout << "working with string: " << s << endl;[m
+[32m+[m
+ 	int i = 0;[m
+ 	string s1 = "";[m
+ 	while(s[i] != ' ')[m
+[36m@@ -1887,11 +1978,29 @@[m [mvoid process(string s, int type, int line_count, int pc_counter, int* valid, ofs[m
+ 			}[m
+ 			else[m
+ 			{[m
+[32m+[m[32m                cout << endl;[m
+ 				if(i == s.size()-1)[m
+ 				{[m
+[32m+[m[32m                    cout << endl;[m
+ 					labels.insert(s2);[m
+ 					//label's address is the address of the instruction following the label[m
+ 					LABEL.insert(pair<string, int>(s2, (pc)*4));[m
+[32m+[m
+[32m+[m[32m                    cout << "pc: " << pc << endl;[m
+[32m+[m[32m                    cout << "pc_counter: " << pc_counter << endl;[m
+[32m+[m[32m                    cout << "section[0]: " << section[0] << endl;[m
+[32m+[m[32m                    cout << "section[1]: " << section[1] << endl;[m
+[32m+[m
+[32m+[m[32m                    // Update datalabel in virtual method table[m
+[32m+[m[32m                    if (DATALABEL.find("#"+s2) != DATALABEL.end())[m
+[32m+[m[32m                    {[m
+[32m+[m[32m                        DATALABEL["#" + s2] = LABEL.at(s2);[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                    if (pc <= section[0])// in data section[m
+[32m+[m[32m                    {[m
+[32m+[m[32m                        datalabels.insert(s2);[m
+[32m+[m[32m                        DATALABEL.insert(pair<string, int>(s2, pc*4));[m
+[32m+[m[32m                    }[m
+ 				}[m
+ 				else datalabel_process(s,line_count,pc_counter,valid,log,write);[m
+ 			}[m
+[36m@@ -1901,7 +2010,8 @@[m [mvoid process(string s, int type, int line_count, int pc_counter, int* valid, ofs[m
+ 			if(labels.count(s1)>0 || datalabels.count(s1)>0)[m
+ 			{[m
+ 				*valid = 0;[m
+[31m-				cout<<"syntax error at line "<<line_count<<" : label with same name declared more than once in file"<<endl;[m
+[32m+[m				[32mcout<<"syntax error at line "<<line_count[m
+[32m+[m[32m                <<" : label with same name \""<<s1<<"\" declared more than once in file"<<endl;[m
+ 				if(write == 1)[m
+ 					log<<"syntax error at line "<<line_count<<" : label with same name declared more than once in file"<<endl;[m
+ 			}[m
+[36m@@ -1912,6 +2022,15 @@[m [mvoid process(string s, int type, int line_count, int pc_counter, int* valid, ofs[m
+ 					labels.insert(s1);[m
+ 					//label's address is the address of the instruction following the label[m
+ 					LABEL.insert(pair<string, int>(s1, (pc)*4));[m
+[32m+[m
+[32m+[m[32m                    // Update datalabel in virtual method table[m
+[32m+[m[32m                    if (DATALABEL.find("#"+s1) != DATALABEL.end())[m
+[32m+[m[32m                        DATALABEL["#"+s1] = LABEL.at(s1);[m
+[32m+[m[32m                    if (pc <= section[0])// in data section[m
+[32m+[m[32m                    {[m
+[32m+[m[32m                        datalabels.insert(s1);[m
+[32m+[m[32m                        DATALABEL[s1] = pc*4;[m
+[32m+[m[32m                    }[m
+ 				}[m
+ 				else datalabel_process(s,line_count,pc_counter,valid,log,write);[m
+ 			}[m
+[36m@@ -1980,6 +2099,28 @@[m [mvoid processFile(std::ifstream& inputFile, std::ofstream& outputFile) {[m
+     }[m
+ [m
+     std::cout << "File processed successfully." << std::endl;[m
+[32m+[m
+[32m+[m[32m    // Print stuff[m
+[32m+[m
+[32m+[m[32m    cout << "\nmap of all valid labels of data section in input file with their addresses:" << endl;[m
+[32m+[m[32m    for (auto& [k, v] : DATALABEL) {[m
+[32m+[m[32m        cout << k << " | " << v << endl;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    cout << "\nset of all valid labels of data section in input file:" << endl;[m
+[32m+[m[32m    for (auto& k : datalabels) {[m
+[32m+[m[32m        cout << k << endl;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    cout << "\nset of all valid labels in input file:" << endl;[m
+[32m+[m[32m    for (auto& k : labels) {[m
+[32m+[m[32m        cout << k << endl;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    cout << "\nmap of all valid labels in input file with their addresses:" << endl;[m
+[32m+[m[32m    for (auto& [k, v] : LABEL) {[m
+[32m+[m[32m        cout << k << " | " << v << endl;[m
+[32m+[m[32m    }[m
+ }[m
+ [m
+ //custom function[m
+[36m@@ -2045,6 +2186,8 @@[m [mint main (int argc, char *argv[])[m
+ 			}[m
+ [m
+ 			//start pass0. pass0 is for processing the data and text sections, labels and datalabels[m
+[32m+[m[32m            cout << "Running first pass for processing .data and .text sections" << endl;[m
+[32m+[m[32m            int previous_type = -1;[m
+ 			while ( getline (In,line) )[m
+ 		    {[m
+ 		    	line_count++;[m
+[36m@@ -2110,8 +2253,10 @@[m [mint main (int argc, char *argv[])[m
+ 					    if(str_final[last_id] != ' ')[m
+ 					    	str_final += ' ';[m
+ [m
+[31m-					    //determine the type of line[m
+[31m-					    int ans = string_type(str_final);[m
+[32m+[m					[32m    //determine the type of line. if it is zero, the line is invalid[m
+[32m+[m[32m                        cout << endl;[m
+[32m+[m					[32m    int ans = string_type(str_final, &previous_type);[m
+[32m+[m[32m                        cout << "ans = " << ans << endl;[m
+ 					    //send it for processing[m
+ 					    process(str_final, ans, line_count, valid_line_count, &generate, Out, 0, Log, logopen);[m
+ 		    		}[m
+[36m@@ -2124,6 +2269,7 @@[m [mint main (int argc, char *argv[])[m
+ [m
+ 		//pass1 is for processing the instructions[m
+ 		// start pass1. similar to pass0 except in the process fumction we send the pass value = 1[m
+[32m+[m[32m        cout << "\nRunning second pass for processing instructions" << endl;[m
+ 		pc = 0;[m
+ 		line_count = 0;[m
+ 		valid_line_count = 0;[m
+[36m@@ -2134,6 +2280,7 @@[m [mint main (int argc, char *argv[])[m
+ 		}[m
+ 		else[m
+ 		{[m
+[32m+[m[32m            int prev_type;[m
+ 			while ( getline (In,line) )[m
+ 		    {[m
+ 		    	line_count++;[m
+[36m@@ -2196,7 +2343,9 @@[m [mint main (int argc, char *argv[])[m
+ 					    if(str_final[last_id] != ' ')[m
+ 					    	str_final += ' ';[m
+ [m
+[31m-					    int ans = string_type(str_final);[m
+[32m+[m[32m                        cout << endl;[m
+[32m+[m					[32m    int ans = string_type(str_final, &prev_type);[m
+[32m+[m[32m                        cout << "ans = " << ans << endl;[m
+ 					    process(str_final, ans, line_count, valid_line_count, &generate, Out, 1, Log, logopen);[m
+ 		    		}[m
+ 		    	}[m
