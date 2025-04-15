@@ -55,13 +55,6 @@ The assembler supports the following 46 instruction set:
 - "nop"
 - "sltiu"
 
-# Compile and Run
-	Complile :
-	$ g++ assembler.cpp -o assembler
-
-    After compiling, run:
-    $ ./assembler test.asm test.o log.txt
-
 ## Modified Assembler
 The following modifications were made to this MIPS assembler. This assembler now supports the generation of mahcine code for the data section of the compiler generated assembly.
 
