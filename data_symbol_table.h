@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include <stddef.h>
 
 //#include "mips.h"
 
@@ -216,12 +217,78 @@ public:
         add_code(padLeft(decToBinary(obj->value), 32));
     }
     void visit(AsciiBinding* obj) override {
-        for (char c : obj->value)
+        for (size_t i = 0; i < obj->value.size(); ++i) {
+            char c = obj->value[i];
+
+            if (c == '"') {
+                if (i == 0) continue;
+                if (obj->value[i - 1] == '\\') { // escaped quote
+                    add_code(padLeft(decToBinary((int)c), 32));
+                }
+                continue; // ignore unescaped quote
+            }
+
+            if (c == '\\') {
+                if (i + 1 < obj->value.size()) {
+                    char next = obj->value[i + 1];
+                    int ascii_val = 0;
+                    switch (next) {
+                        case 'n': ascii_val = '\n'; break;
+                        case 't': ascii_val = '\t'; break;
+                        case 'r': ascii_val = '\r'; break;
+                        case '\\': ascii_val = '\\'; break;
+                        case '\'': ascii_val = '\''; break;
+                        case '"': ascii_val = '"'; break;
+                        case '0': ascii_val = '\0'; break;
+                        default:
+                            ascii_val = next; // unrecognized escape, treat literally
+                            break;
+                    }
+                    add_code(padLeft(decToBinary(ascii_val), 32));
+                    ++i; // skip next since it was part of escape
+                    continue;
+                }
+            }
+
             add_code(padLeft(decToBinary((int)c), 32));
+        }
     }
     void visit(AsciizBinding* obj) override {
-        for (char c : obj->value)
+        for (size_t i = 0; i < obj->value.size(); ++i) {
+            char c = obj->value[i];
+
+            if (c == '"') {
+                if (i == 0) continue;
+                if (obj->value[i - 1] == '\\') { // escaped quote
+                    add_code(padLeft(decToBinary((int)c), 32));
+                }
+                continue; // ignore unescaped quote
+            }
+
+            if (c == '\\') {
+                if (i + 1 < obj->value.size()) {
+                    char next = obj->value[i + 1];
+                    int ascii_val = 0;
+                    switch (next) {
+                        case 'n': ascii_val = '\n'; break;
+                        case 't': ascii_val = '\t'; break;
+                        case 'r': ascii_val = '\r'; break;
+                        case '\\': ascii_val = '\\'; break;
+                        case '\'': ascii_val = '\''; break;
+                        case '"': ascii_val = '"'; break;
+                        case '0': ascii_val = '\0'; break;
+                        default:
+                            ascii_val = next; // unrecognized escape, treat literally
+                            break;
+                    }
+                    add_code(padLeft(decToBinary(ascii_val), 32));
+                    ++i; // skip next since it was part of escape
+                    continue;
+                }
+            }
+
             add_code(padLeft(decToBinary((int)c), 32));
+        }
         add_code(padLeft(decToBinary(0), 32));
     }
     void visit(EquBinding*) override {}
