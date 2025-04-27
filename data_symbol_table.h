@@ -8,6 +8,7 @@
 #include <vector>
 #include <functional>
 #include <stddef.h>
+#include <stdint.h>
 
 //#include "mips.h"
 
@@ -217,13 +218,23 @@ public:
         add_code(padLeft(decToBinary(obj->value), 32));
     }
     void visit(AsciiBinding* obj) override {
+        uint32_t word = 0;
+        uint8_t byte_count = 0;
+
         for (size_t i = 0; i < obj->value.size(); ++i) {
             char c = obj->value[i];
 
             if (c == '"') {
-                if (i == 0) continue;
-                if (obj->value[i - 1] == '\\') { // escaped quote
-                    add_code(padLeft(decToBinary((int)c), 32));
+                if (i == 0) continue; // skip opening quote
+                if (obj->value[i - 1] == '\\') {
+                    // escaped quote
+                    word |= (static_cast<uint32_t>('"') << ((3 - byte_count) * 8));
+                    byte_count++;
+                    if (byte_count == 4) {
+                        add_code(padLeft(decToBinary(word), 32));
+                        word = 0;
+                        byte_count = 0;
+                    }
                 }
                 continue; // ignore unescaped quote
             }
@@ -231,7 +242,7 @@ public:
             if (c == '\\') {
                 if (i + 1 < obj->value.size()) {
                     char next = obj->value[i + 1];
-                    int ascii_val = 0;
+                    uint8_t ascii_val = 0;
                     switch (next) {
                         case 'n': ascii_val = '\n'; break;
                         case 't': ascii_val = '\t'; break;
@@ -240,27 +251,53 @@ public:
                         case '\'': ascii_val = '\''; break;
                         case '"': ascii_val = '"'; break;
                         case '0': ascii_val = '\0'; break;
-                        default:
-                            ascii_val = next; // unrecognized escape, treat literally
-                            break;
+                        default: ascii_val = next; break; // unrecognized escape
                     }
-                    add_code(padLeft(decToBinary(ascii_val), 32));
-                    ++i; // skip next since it was part of escape
+                    word |= (static_cast<uint32_t>(ascii_val) << ((3 - byte_count) * 8));
+                    byte_count++;
+                    if (byte_count == 4) {
+                        add_code(padLeft(decToBinary(word), 32));
+                        word = 0;
+                        byte_count = 0;
+                    }
+                    ++i; // skip the next character
                     continue;
                 }
             }
 
-            add_code(padLeft(decToBinary((int)c), 32));
+            // Normal character
+            word |= (static_cast<uint32_t>(c) << ((3 - byte_count) * 8));
+            byte_count++;
+            if (byte_count == 4) {
+                add_code(padLeft(decToBinary(word), 32));
+                word = 0;
+                byte_count = 0;
+            }
+        }
+
+        // After the loop, if there are any leftover bytes, still flush them
+        if (byte_count > 0) {
+            add_code(padLeft(decToBinary(word), 32));
         }
     }
     void visit(AsciizBinding* obj) override {
+        uint32_t word = 0;
+        uint8_t byte_count = 0;
+
         for (size_t i = 0; i < obj->value.size(); ++i) {
             char c = obj->value[i];
 
             if (c == '"') {
-                if (i == 0) continue;
-                if (obj->value[i - 1] == '\\') { // escaped quote
-                    add_code(padLeft(decToBinary((int)c), 32));
+                if (i == 0) continue; // skip opening quote
+                if (obj->value[i - 1] == '\\') {
+                    // escaped quote
+                    word |= (static_cast<uint32_t>('"') << ((3 - byte_count) * 8));
+                    byte_count++;
+                    if (byte_count == 4) {
+                        add_code(padLeft(decToBinary(word), 32));
+                        word = 0;
+                        byte_count = 0;
+                    }
                 }
                 continue; // ignore unescaped quote
             }
@@ -268,7 +305,7 @@ public:
             if (c == '\\') {
                 if (i + 1 < obj->value.size()) {
                     char next = obj->value[i + 1];
-                    int ascii_val = 0;
+                    uint8_t ascii_val = 0;
                     switch (next) {
                         case 'n': ascii_val = '\n'; break;
                         case 't': ascii_val = '\t'; break;
@@ -277,17 +314,33 @@ public:
                         case '\'': ascii_val = '\''; break;
                         case '"': ascii_val = '"'; break;
                         case '0': ascii_val = '\0'; break;
-                        default:
-                            ascii_val = next; // unrecognized escape, treat literally
-                            break;
+                        default: ascii_val = next; break; // unrecognized escape
                     }
-                    add_code(padLeft(decToBinary(ascii_val), 32));
-                    ++i; // skip next since it was part of escape
+                    word |= (static_cast<uint32_t>(ascii_val) << ((3 - byte_count) * 8));
+                    byte_count++;
+                    if (byte_count == 4) {
+                        add_code(padLeft(decToBinary(word), 32));
+                        word = 0;
+                        byte_count = 0;
+                    }
+                    ++i; // skip the next character
                     continue;
                 }
             }
 
-            add_code(padLeft(decToBinary((int)c), 32));
+            // Normal character
+            word |= (static_cast<uint32_t>(c) << ((3 - byte_count) * 8));
+            byte_count++;
+            if (byte_count == 4) {
+                add_code(padLeft(decToBinary(word), 32));
+                word = 0;
+                byte_count = 0;
+            }
+        }
+
+        // After the loop, if there are any leftover bytes, still flush them
+        if (byte_count > 0) {
+            add_code(padLeft(decToBinary(word), 32));
         }
         add_code(padLeft(decToBinary(0), 32));
     }
@@ -295,10 +348,12 @@ public:
     void visit(DoubleBinding*) override {}
     void visit(FloatBinding*) override {}
     void visit(HalfBinding*) override {}
+
     void visit(SpaceBinding* obj) override {
         for (int i=0; i<obj->value; ++i)
             add_code(padLeft(decToBinary(0), 32));
     }
+
     void visit(ByteBinding*) override {}
     void visit(AlignBinding*) override {}
 };

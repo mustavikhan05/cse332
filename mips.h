@@ -51,6 +51,7 @@ string decToBinary(int n)
     	result += str[i];
     }
 
+//    result = std::string(std::max(0ul, 32 - result.size()), '0') + result;
     return result;
 }
 

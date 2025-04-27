@@ -162,6 +162,10 @@ void type1(string opname, string operand, int operand_count, int line_count, int
 		{
 			printhex(pc*4, file);
 			pc++;
+            file<<"0000 0000 0000 0000 0000 0000 0000 0000"<<endl;
+
+            printhex(pc*4, file);
+            pc++;
 			file<<"0000 0000 0000 0000 0000 0000 0000 1100"<<endl;
 		}
 		else if(opname == "nop")
@@ -696,6 +700,7 @@ void type5(string opname, string operand, int operand_count, int line_count, int
 			int off_int = stoi(off);
 			string off_bin = decToBinary(off_int);
             cout << "off_int: " << off_int << endl;
+            cout << "off_bin: " << off_bin << endl;
 
 			string op, rs, rt, h;
 			op = type5_op[opname];
@@ -704,7 +709,8 @@ void type5(string opname, string operand, int operand_count, int line_count, int
 
             // Since I added support for 2's complement, I need to find a way to discard upper 16 bits
             cout << "before truncation, off_bin: " << off_bin << endl;
-            off_bin = off_bin.substr(std::min(off_bin.size(), static_cast<size_t>(16)));
+            if (off_bin.size() > 16)
+                off_bin = off_bin.substr(std::min(off_bin.size(), static_cast<size_t>(16)));
             cout << "off_bin: " << off_bin << endl;
 			if(off_bin.size()>16)
 			{
@@ -1062,7 +1068,8 @@ void type7(string opname, string operand, int operand_count, int line_count, int
 			{
 				printhex(pc*4, file);
 				pc++;
-				file<<"0011 1100 0000 0001 0001 0000 0000 0001"<<endl;
+//                file<<"0011 1100 0000 0001 0001 0000 0000 0001"<<endl;
+                file<<"0011 1100 0000 0001 0000 0000 0000 0000"<<endl;
 
                 cout << "looking for label \"" << lab << "\" in DATALABEL" << endl;
 
@@ -1690,11 +1697,12 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
 				}
 
 				int space = stoi(s4);
+                cout << "space: " << space << endl;
 				datalabels.insert(s2);
                 data_section_symbol_table[s2]._types.push_back(createBinding<BindingType::SPACE>(space));
                 data_section_symbol_table[s2].offset = address;
 				DATALABEL.insert(pair<string, int>(s2, address));
-				address += space;
+				address += space * 4;
 			}
 			else
 			{
@@ -1714,7 +1722,7 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
                 data_section_symbol_table[s2].offset = address;
 				datalabels.insert(s2);
 				DATALABEL.insert(pair<string, int>(s2, address));
-				address += s5.size()-2;
+				address += (s5.size()-2) * 4;
 			}
 			else
 			{
@@ -1735,7 +1743,7 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
 
 				datalabels.insert(s2);
 				DATALABEL.insert(pair<string, int>(s2, address));
-				address += s5.size()-1;
+				address += (s5.size()-1) * 4;
 			}
 			else
 			{
@@ -1946,7 +1954,7 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
 
             bool ints, chars;
             ints = chars = false;
-		    while (token1 != NULL)
+		    while (token1 != nullptr)
 			{
                 // valid input:
                 //  .word 1,2,3,......
