@@ -1566,6 +1566,7 @@ void instruction_process(string s, int line_count, int* valid, ofstream &file, o
 void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofstream &log, int write)
 {
     cout << "entered function: datalabel_process" << endl;
+    cout << "current address: " << address << endl;
     cout << "Received String: " << s << endl;
 	//checks that labels of data section must come under .data and not under .text
 	if(!(section[0] != -1 && !(section[0] < section[1] && section[1] < pc_counter )))
@@ -1735,15 +1736,17 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
 		}
 		else if(data == 3)//.asciiz
 		{
+            cout << "Processing asciiz" << endl;
+            cout << "current address value is " << address << endl;
 			int id = s5.size()-1;
-			if(s5[0] == 34 && s5[id] == 34)
+			if(s5[0] == 34 && s5[id] == 34) // if the string ends in quotation marks
 			{
                 data_section_symbol_table[s2]._types.push_back(createBinding<BindingType::ASCIIZ>(s5));
                 data_section_symbol_table[s2].offset = address;
 
 				datalabels.insert(s2);
 				DATALABEL.insert(pair<string, int>(s2, address));
-				address += (s5.size()-1) * 4;
+				address += (s5.size()-2) * 4; // -2 because the string starts and ends in quotation marks
 			}
 			else
 			{
@@ -1753,6 +1756,7 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
 					log<<"syntax error at line "<<line_count<<endl;
 				return;
 			}
+            cout << "Done procesing asciiz. Current address is " << address << endl;
 		}
 		else if(data == 4)//.word
 		{
@@ -1785,6 +1789,7 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
             data_section_symbol_table[s2].offset = address;
 
 			int space = token_count*4;
+            cout << "inserting " << s2 << " into datalabels with address " << address << endl;
 			datalabels.insert(s2);
 			DATALABEL.insert(pair<string, int>(s2, address));
 			address += space;
@@ -1925,6 +1930,7 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
 		}
 		else if(data == 3)//.asciiz
 		{
+            cout << "processing asciiz" << endl;
 			int id = s5.size()-1;
 			if(s5[0] == 34 && s5[id] == 34)
 			{
@@ -1998,13 +2004,14 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
             else cout << "token is numeric only" << endl;
 			int space = token_count*4;
             string s_alpha = "#" + s5;
-            cout << "inserting \"" << s_alpha << "\" into datalabels" << endl;
+            cout << "inserting \"" << s_alpha << "\" into datalabels with address " << address << endl;
 			datalabels.insert(s_alpha);
 			DATALABEL.insert(pair<string, int>(s_alpha, address));
 
 			address += space;
 		}
 	}
+    cout << "exited function datalabel_process with address: " << address << endl;
 }
 
 //sends valid lines of different types for procsessing into respective functions for their processing
@@ -2155,7 +2162,7 @@ void process(string s, int type, int line_count, int pc_counter, int* valid, ofs
 				log<<"syntax error at line " << line_count << " : text section declared more than once in file"<<endl;
 		}
 	}
-    cout << "Exited function: process" << endl;
+    cout << "Exited function: process, address: " << address << endl;
 }
 
 //custom function
@@ -2438,10 +2445,12 @@ int main (int argc, char *argv[])
 // Generate code for data section
         // fill in the missing values for the data section
         for(auto& [k, v] : LABEL) {
+            cout << "k: " << k << ", v: " << v << endl;
             SymbolTableEntry temp_entry{k, {{}, -1}};
             auto& entries = data_section_symbol_table.entries;
             auto it = entries.find(temp_entry);
             if (it != entries.end()) {
+                cout << "entry found in fata section symbol table." << endl;
                 auto& _binding_information = const_cast<BindingInformation&>(it->_binding_information);
                 if (_binding_information.offset == -1)
                     _binding_information.offset = v;
