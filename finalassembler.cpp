@@ -1936,7 +1936,7 @@ void datalabel_process(string s, int line_count, int pc_counter, int* valid, ofs
 			{
 				datalabels.insert(s1);
 				DATALABEL.insert(pair<string, int>(s1, address));
-				address += s5.size()-1;
+				address += s5.size()-2;
 			}
 			else
 			{
