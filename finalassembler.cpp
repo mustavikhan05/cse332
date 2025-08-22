@@ -1566,8 +1566,67 @@ void type11(string opname, string operand, int operand_count, int line_count, in
 	}
 	else if(operand_count == 1)
 	{
-		// Fallback to standard JAL with just label
-		type10(opname, operand, operand_count, line_count, valid, file, log, write);
+		// Handle standard JAL with just label - inline the logic
+		int i = 0;
+		string lab = "";
+		while(operand[i] != ' ')
+		{
+			lab += operand[i];
+			i++;
+		}
+
+		if(!(labels.count(lab)>0))
+		{
+			*valid = 0;
+			cout<<"syntax error at line "<<line_count<<": no label exists with this name"<<endl;
+			if(write == 1)
+				log<<"syntax error at line "<<line_count<<": no label exists with this name"<<endl;
+			return;
+		}
+
+		string op,h;
+
+		if(opname == "jal")
+			op = "000011";
+
+		int x = LABEL[lab];
+		x = x >> 2;
+
+		string imm_bin = decToBinary(x);
+		if(imm_bin.size() == 0)
+		{
+			h = "00000000000000000000000000";
+		}
+		else
+		{
+			string temp = "";
+			for(int temp_id = 0; temp_id < (26-imm_bin.size()); temp_id++)
+			{
+				temp += "0";
+			}
+
+			temp += imm_bin;
+			h = temp;
+		}
+
+		string result = "";
+		result += op;
+		result += h;
+
+		string res_final = "";
+		for(int id=0; id<result.size(); id++)
+		{
+			if( id!=0 && id%4 == 0)
+			{
+				res_final += " ";
+			}
+
+			res_final += result[id];
+		}
+
+		printhex(pc*4, file);
+		pc++;
+		file<<res_final<<endl;
 	}
 	else
 	{
