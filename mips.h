@@ -102,7 +102,7 @@ map<string, int >  instr_type = {
 	pair<string,int>  ("bltz",7),
 	pair<string,int>  ("bgez",7),
 	pair<string,int>  ("j",10),
-	pair<string,int>  ("jal",10),
+	pair<string,int>  ("jal",11),
 	pair<string,int>  ("jalr",8),
 	pair<string,int>  ("jr",8),
 	pair<string,int>  ("mfhi",8),

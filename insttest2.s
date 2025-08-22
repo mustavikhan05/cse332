@@ -1,18 +1,38 @@
+.data
+arr: .word 3,4,6,10,2,8
+size: .word 6
 .text
 main:
-    addi $4,$0,27			//4 has 27
-    xori $5,$4,5			//5 has 3
-    add $6,$4,$5			//6 has 57
-    sub $7,$5,$4			//7 has 3
-    slt $8,$7,$6			//8 has 1
-    or $9,$7,$0			    //9 has 3
-    and $10,$7,$0			//10 has 0
-    sll $11,$7,1			//11 has 6
-    srl $12,$7,1			//12 has 1
-    slt $13,$8,$7           //13 has 1
-    li $14, 12              //14 has 12
-    li $15, 110             //15 has 110
-    li $16, 120             //16 has 120
-    sw $15, 4($14)          //dmem 16 has 110
-    sw $16, 8($14)          //dmem 20 has 120
-    lw $17, 4($14)          //reg 16 has 110
+    jal $31,compute_stats
+    j end
+compute_stats:
+    addi $4,$0,0
+    lw $5,size
+    lw $6,arr
+    add $7,$6,$0
+    add $8,$0,$0
+loop:
+    slt $9,$4,$5
+    xori $9,$9,1
+    beq $9,$0,done
+    sll $10,$4,2
+    add $11,$10,$0
+    addi $11,$11,arr
+    lw $12,0($11)
+    slt $13,$12,$6
+    xori $13,$13,1
+    beq $13,$0,skip_min
+    add $6,$12,$0
+skip_min:
+    slt $13,$7,$12
+    xori $13,$13,1
+    beq $13,$0,skip_max
+    add $7,$12,$0
+skip_max:
+    add $8,$8,$12
+    addi $4,$4,1
+    j loop
+done:
+    jr $31
+end: 
+    j end

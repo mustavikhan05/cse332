@@ -273,7 +273,7 @@ void type2(string opname, string operand, int operand_count, int line_count, int
 
 }
 
-//for processing instruction type2 : op r1, r2, imm
+//for processing instruction type2 : op r1, r2, imm or label
 void type3(string opname, string operand, int operand_count, int line_count, int* valid, ofstream &file, ofstream &log, int write)
 {
 	if(operand_count == 3)
@@ -304,6 +304,7 @@ void type3(string opname, string operand, int operand_count, int line_count, int
 
 		int negative = 0;
 		int int_flag = 1;
+		bool is_label = false;
 
 		if(imm[0]=='-' && imm.size()==1)
 		{
@@ -319,22 +320,34 @@ void type3(string opname, string operand, int operand_count, int line_count, int
 			negative = 1;
 		}
 
+		// Check if immediate is a number or a label
 		if(negative == 0 && !(imm[0] >= '0' && imm[0] <= '9'))
 		{
-			*valid = 0;
-			cout<<"syntax error at line "<<line_count<<": not valid immediate value"<<endl;
-			if(write == 1)
-				log<<"syntax error at line "<<line_count<<": not valid immediate value"<<endl;
-			return;
-		}
-
-		for(int id=1; id<imm.length(); id++)
-        {
-        	if(!(imm[id]>='0' && imm[id]<='9'))
+			// Could be a label, check if it exists in datalabels
+			if(datalabels.count(imm) > 0)
 			{
-				int_flag = 0;
+				is_label = true;
+				int_flag = 1; // treat as valid
 			}
-        }
+			else
+			{
+				*valid = 0;
+				cout<<"syntax error at line "<<line_count<<": not valid immediate value or unknown label: "<<imm<<endl;
+				if(write == 1)
+					log<<"syntax error at line "<<line_count<<": not valid immediate value or unknown label"<<endl;
+				return;
+			}
+		}
+		else
+		{
+			for(int id=1; id<imm.length(); id++)
+	        {
+	        	if(!(imm[id]>='0' && imm[id]<='9'))
+				{
+					int_flag = 0;
+				}
+	        }
+		}
 
 		if(!(registers.count(r1)>0 && registers.count(r2)>0 && int_flag==1))
 		{
@@ -345,20 +358,28 @@ void type3(string opname, string operand, int operand_count, int line_count, int
 			return;
 		}
 
-		try
+		int imm_int;
+		if(is_label)
 		{
-			int x = stoi(imm);
+			imm_int = DATALABEL[imm];
 		}
-		catch(const std::out_of_range& oor)
+		else
 		{
-			*valid = 0;
-			cout << "Out of Range error : immediate value out of range 0..65535 at line " << line_count<<endl;
-			if(write == 1)
-				log << "Out of Range error : immediate value out of range 0..65535 at line " <<line_count<< endl;
-			return;
+			try
+			{
+				int x = stoi(imm);
+			}
+			catch(const std::out_of_range& oor)
+			{
+				*valid = 0;
+				cout << "Out of Range error : immediate value out of range 0..65535 at line " << line_count<<endl;
+				if(write == 1)
+					log << "Out of Range error : immediate value out of range 0..65535 at line " <<line_count<< endl;
+				return;
+			}
+			imm_int = stoi(imm);
 		}
-
-		int imm_int = stoi(imm);
+		
 		string imm_bin = decToBinary(imm_int);
 
 		if(opname == "sll" || opname == "srl" || opname == "sra")
@@ -601,7 +622,7 @@ void type4(string opname, string operand, int operand_count, int line_count, int
 	}
 }
 
-//for processing instruction type2 : op r1, (off)r2
+//for processing instruction type2 : op r1, (off)r2 or op r1, label
 void type5(string opname, string operand, int operand_count, int line_count, int* valid, ofstream &file, ofstream &log, int write)
 {
     cout << "operand: " << operand << endl;
@@ -623,6 +644,79 @@ void type5(string opname, string operand, int operand_count, int line_count, int
 			j++;
 		}
 
+		// Check if str2 is a label (no parentheses) or register+offset format
+		bool is_label_format = (str2.find('(') == string::npos);
+		
+		if(is_label_format)
+		{
+			// Handle "lw $reg, label" format
+			if(!(registers.count(r1)>0))
+			{
+				*valid = 0;
+				cout<<"syntax error at line "<<line_count<<": invalid register"<<endl;
+				if(write == 1)
+					log<<"syntax error at line "<<line_count<<": invalid register"<<endl;
+				return;
+			}
+			
+			if(!(datalabels.count(str2)>0))
+			{
+				*valid = 0;
+				cout<<"syntax error at line "<<line_count<<": no data label exists with this name: "<<str2<<endl;
+				if(write == 1)
+					log<<"syntax error at line "<<line_count<<": no data label exists with this name"<<endl;
+				return;
+			}
+			
+			string op, rs, rt, h;
+			op = type5_op[opname];
+			rs = "00000";  // $zero register for base
+			rt = reg_op[r1];
+			
+			int label_addr = DATALABEL[str2];
+			string addr_bin = decToBinary(label_addr);
+			
+			if(addr_bin.size() > 16)
+				addr_bin = addr_bin.substr(std::max(0, (int)addr_bin.size() - 16));
+			
+			if(addr_bin.size() == 0)
+			{
+				h = "0000000000000000";
+			}
+			else
+			{
+				string temp = "";
+				for(int temp_id = 0; temp_id < (16-addr_bin.size()); temp_id++)
+				{
+					temp += "0";
+				}
+				temp += addr_bin;
+				h = temp;
+			}
+			
+			string result = "";
+			result += op;
+			result += rs;
+			result += rt;
+			result += h;
+
+			string res_final = "";
+			for(int id=0; id<result.size(); id++)
+			{
+				if( id!=0 && id%4 == 0)
+				{
+					res_final += " ";
+				}
+				res_final += result[id];
+			}
+
+			printhex(pc*4, file);
+			pc++;
+			file<<res_final<<endl;
+			return;
+		}
+
+		// Original (offset)register format processing
 		char y[str2.length()+1];
 	    strcpy(y, str2.c_str());
 	    string str = "";
@@ -1386,6 +1480,105 @@ void type9(string opname, string operand, int operand_count, int line_count, int
 	}
 }
 
+//for processing instruction type2 : op r1, label (JAL with register and label)
+void type11(string opname, string operand, int operand_count, int line_count, int* valid, ofstream &file, ofstream &log, int write)
+{
+	if(operand_count == 2)
+	{
+		int i = 0;
+		string r1 = "";
+		string lab = "";
+		while(operand[i] != ' ')
+		{
+			r1 += operand[i];
+			i++;
+		}
+
+		int j = i+1;
+		while(operand[j] != ' ')
+		{
+			lab += operand[j];
+			j++;
+		}
+
+		if(!(registers.count(r1)>0))
+		{
+			*valid = 0;
+			cout<<"syntax error at line "<<line_count<<": invalid register"<<endl;
+			if(write == 1)
+				log<<"syntax error at line "<<line_count<<": invalid register"<<endl;
+			return;
+		}
+
+		if(!(labels.count(lab)>0))
+		{
+			*valid = 0;
+			cout<<"syntax error at line "<<line_count<<": no label exists with this name"<<endl;
+			if(write == 1)
+				log<<"syntax error at line "<<line_count<<": no label exists with this name"<<endl;
+			return;
+		}
+
+		string op,h;
+
+		if(opname == "jal")
+			op = "000011";
+
+		int x = LABEL[lab];
+		x = x >> 2;
+
+		string imm_bin = decToBinary(x);
+		if(imm_bin.size() == 0)
+		{
+			h = "00000000000000000000000000";
+		}
+		else
+		{
+			string temp = "";
+			for(int temp_id = 0; temp_id < (26-imm_bin.size()); temp_id++)
+			{
+				temp += "0";
+			}
+
+			temp += imm_bin;
+			h = temp;
+		}
+
+		string result = "";
+		result += op;
+		result += h;
+
+		string res_final = "";
+		for(int id=0; id<result.size(); id++)
+		{
+			if( id!=0 && id%4 == 0)
+			{
+				res_final += " ";
+			}
+
+			res_final += result[id];
+		}
+
+		printhex(pc*4, file);
+		pc++;
+		file<<res_final<<endl;
+
+	}
+	else if(operand_count == 1)
+	{
+		// Fallback to standard JAL with just label
+		type10(opname, operand, operand_count, line_count, valid, file, log, write);
+	}
+	else
+	{
+		*valid = 0;
+		cout<<"syntax error at line "<<line_count<<endl;
+		if(write == 1)
+			log<<"syntax error at line "<<line_count<<endl;
+		return;
+	}
+}
+
 //for processing instruction type2 : op label
 void type10(string opname, string operand, int operand_count, int line_count, int* valid, ofstream &file, ofstream &log, int write)
 {
@@ -1553,6 +1746,11 @@ void instruction_process(string s, int line_count, int* valid, ofstream &file, o
 			case 10:
 			{
 				type10(s1, str, token_count, line_count, valid, file, log, write);
+				break;
+			}
+			case 11:
+			{
+				type11(s1, str, token_count, line_count, valid, file, log, write);
 				break;
 			}
 			default:
